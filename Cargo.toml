@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+csv = "1"
+rust_decimal = { version = "1", features = ["serde", "serde-str"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [lints.rust]
 unsafe_code = "forbid"
@@ -51,3 +57,9 @@ must_use_candidate = "allow"
 module_name_repetitions = "allow"
 too_many_lines = "allow"
 similar_names = "allow"
+
+[dev-dependencies]
+rust_decimal_macros = "1.40.0"
+expect-test = "1"
+indoc = "2"
+tempfile = "3"

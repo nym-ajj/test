@@ -1,3 +1,45 @@
-fn main() {
-    println!("Hello, world!");
+//! Payments engine CLI - thin wrapper around the payments library.
+
+use std::{env, fs::File, io, process::ExitCode};
+
+use anyhow::{Context, Result};
+use tracing::error;
+
+fn run() -> Result<ExitCode> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive(tracing::Level::WARN.into()),
+        )
+        .with_writer(io::stderr)
+        .init();
+
+    let args: Vec<String> = env::args().collect();
+
+    let file_path = match args.get(1) {
+        Some(path) => path,
+        None => {
+            error!("missing file argument");
+            payments::csv_io::write_accounts(io::stdout(), std::iter::empty())?;
+            return Ok(ExitCode::SUCCESS);
+        }
+    };
+
+    let file =
+        File::open(file_path).with_context(|| format!("failed to open file: {}", file_path))?;
+
+    let accounts = payments::process_transactions(file);
+    payments::csv_io::write_accounts(io::stdout(), accounts.iter())?;
+
+    Ok(ExitCode::SUCCESS)
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(code) => code,
+        Err(e) => {
+            error!("fatal error: {}", e);
+            ExitCode::FAILURE
+        }
+    }
 }
