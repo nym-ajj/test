@@ -333,13 +333,17 @@ impl Engine {
 
         let amount = deposit.amount;
 
-        // Pre-compute new balances before mutating
-        let (current_available, current_held) = self
+        // Pre-compute new balances before mutating (also checks locked state)
+        let (is_locked, current_available, current_held) = self
             .accounts
             .get(&tx.client_id)
-            .map_or((Amount::default(), Amount::default()), |a| {
-                (a.available, a.held)
+            .map_or((false, Amount::default(), Amount::default()), |a| {
+                (a.locked, a.available, a.held)
             });
+
+        if is_locked {
+            return Err(EngineError::AccountLocked(tx.client_id));
+        }
 
         let new_available = (current_available + amount).ok_or(EngineError::Overflow {
             client_id: tx.client_id,
@@ -392,12 +396,15 @@ impl Engine {
 
         let amount = deposit.amount;
 
-        // Pre-compute new held before mutating
-        let current_held = self
+        // Pre-compute new held before mutating (also checks locked state)
+        let (is_locked, current_held) = self
             .accounts
             .get(&tx.client_id)
-            .map(|a| a.held)
-            .unwrap_or_default();
+            .map_or((false, Amount::default()), |a| (a.locked, a.held));
+
+        if is_locked {
+            return Err(EngineError::AccountLocked(tx.client_id));
+        }
 
         // NOTE: Funds are removed from held (they leave the system entirely).
         // The account is then locked to prevent further transactions.
