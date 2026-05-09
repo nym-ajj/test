@@ -29,55 +29,54 @@
         {
           config,
           pkgs,
-          lib,
           ...
         }:
         {
-          pre-commit.settings = {
-            excludes = [ "^target/" ];
+          formatter = pkgs.nixfmt;
 
-            hooks = {
-              # Pre-commit: format with nightly rustfmt
-              # Custom entry needed because +nightly must come before fmt
-              rustfmt-nightly = {
-                enable = true;
-                name = "rustfmt-nightly";
-                description = "Format Rust code with nightly rustfmt";
-                entry = "cargo +nightly fmt --";
-                types = [ "rust" ];
-                pass_filenames = true;
-                stages = [ "pre-commit" ];
-              };
+          # Disable pre-commit check in nix flake check (hooks use system Rust)
+          pre-commit.check.enable = false;
 
-              # Pre-push: run clippy with same args as CI
-              clippy = {
-                enable = true;
-                name = "clippy";
-                description = "Lint Rust code with clippy";
-                entry = "cargo clippy --all-targets --all-features -- -D warnings";
-                types = [ "rust" ];
-                pass_filenames = false;
-                stages = [ "pre-push" ];
-              };
+          pre-commit.settings.hooks = {
+            # Format with nightly rustfmt (default stages: pre-commit)
+            rustfmt-nightly = {
+              enable = true;
+              name = "rustfmt-nightly";
+              description = "Format Rust code with nightly rustfmt";
+              entry = "cargo +nightly fmt --";
+              types = [ "rust" ];
+              pass_filenames = true;
+            };
+
+            # Pre-push: run clippy with same args as CI
+            clippy = {
+              enable = true;
+              name = "clippy";
+              description = "Lint Rust code with clippy";
+              entry = "cargo clippy --all-targets --all-features -- -D warnings";
+              types = [ "rust" ];
+              pass_filenames = false;
+              stages = [ "pre-push" ];
+            };
+
+            # Pre-push: run tests
+            cargo-test = {
+              enable = true;
+              name = "cargo-test";
+              description = "Run tests with cargo-nextest";
+              entry = "cargo nextest run --all-features";
+              types = [ "rust" ];
+              pass_filenames = false;
+              stages = [ "pre-push" ];
             };
           };
 
           devShells.default = pkgs.mkShell {
             shellHook = config.pre-commit.installationScript;
 
-            packages = with pkgs; [
-              # Rust toolchain
-              rustc
-              cargo
-              rustfmt
-              clippy
-
-              # Testing
-              cargo-nextest
-              cargo-llvm-cov
-
-              # Nix formatting
-              nixfmt-rfc-style
+            packages = [
+              # Nix formatting only - Rust comes from system
+              pkgs.nixfmt
             ];
 
             # Match CI environment

@@ -1,1 +1,8 @@
 /target
+/spec
+/ai-transcripts
+
+# Nix / direnv
+/.direnv
+/.pre-commit-config.yaml
+/result
