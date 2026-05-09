@@ -48,7 +48,7 @@ fn parse_tx_type(s: &str) -> Result<TransactionType> {
         "dispute" => Ok(TransactionType::Dispute),
         "resolve" => Ok(TransactionType::Resolve),
         "chargeback" => Ok(TransactionType::Chargeback),
-        other => Err(anyhow!("unknown transaction type: {}", other)),
+        other => Err(anyhow!("unknown transaction type: {other}")),
     }
 }
 

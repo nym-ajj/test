@@ -22,7 +22,8 @@ impl Amount {
     /// Creates a new Amount from a Decimal.
     ///
     /// Returns `None` if the decimal has more than 4 decimal places.
-    pub fn new(value: Decimal) -> Option<Self> {
+    #[must_use]
+    pub const fn new(value: Decimal) -> Option<Self> {
         if value.scale() > AMOUNT_SCALE {
             return None;
         }
@@ -30,23 +31,26 @@ impl Amount {
     }
 
     /// Returns true if this amount is negative.
-    pub fn is_negative(&self) -> bool {
+    #[must_use]
+    pub const fn is_negative(&self) -> bool {
         self.0.is_sign_negative() && !self.0.is_zero()
     }
 
     /// Returns true if this amount is zero.
-    pub fn is_zero(&self) -> bool {
+    #[must_use]
+    pub const fn is_zero(&self) -> bool {
         self.0.is_zero()
     }
 
     /// Returns the underlying Decimal value.
-    pub fn as_decimal(&self) -> Decimal {
+    #[must_use]
+    pub const fn as_decimal(&self) -> Decimal {
         self.0
     }
 }
 
 impl Add for Amount {
-    type Output = Option<Amount>;
+    type Output = Option<Self>;
 
     fn add(self, rhs: Self) -> Self::Output {
         self.0.checked_add(rhs.0).map(Amount)
@@ -54,7 +58,7 @@ impl Add for Amount {
 }
 
 impl Sub for Amount {
-    type Output = Option<Amount>;
+    type Output = Option<Self>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         self.0.checked_sub(rhs.0).map(Amount)
@@ -108,6 +112,7 @@ pub struct Account {
 
 impl Account {
     /// Creates a new account for the given client with zero balances.
+    #[must_use]
     pub fn new(client_id: ClientId) -> Self {
         Self {
             client_id,
@@ -118,6 +123,7 @@ impl Account {
     }
 
     /// Returns the total balance (available + held).
+    #[must_use]
     pub fn total(&self) -> Amount {
         // NOTE: Cannot overflow for valid account states since both components
         // are non-negative and bounded by deposit limits.

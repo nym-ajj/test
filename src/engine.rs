@@ -35,6 +35,8 @@ pub enum EngineError {
     NotDisputed { tx_id: TxId, state: DisputeState },
     /// Missing amount for deposit/withdrawal.
     MissingAmount(TxId),
+    /// Arithmetic overflow during balance update.
+    Overflow { client_id: ClientId },
 }
 
 impl std::fmt::Display for EngineError {
@@ -82,6 +84,9 @@ impl std::fmt::Display for EngineError {
             Self::MissingAmount(tx_id) => {
                 write!(f, "transaction {} is missing required amount", tx_id.0)
             }
+            Self::Overflow { client_id } => {
+                write!(f, "arithmetic overflow for client {}", client_id.0)
+            }
         }
     }
 }
@@ -103,6 +108,7 @@ pub struct Engine {
 
 impl Engine {
     /// Creates a new engine with no accounts.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             accounts: HashMap::new(),
@@ -147,6 +153,16 @@ impl Engine {
             return Err(EngineError::AccountLocked(tx.client_id));
         }
 
+        // Check overflow before mutating any state
+        let current_available = self
+            .accounts
+            .get(&tx.client_id)
+            .map(|a| a.available)
+            .unwrap_or_default();
+        let new_available = (current_available + amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+
         self.tx_ids.insert(tx.tx_id);
 
         self.deposits.insert(
@@ -159,9 +175,7 @@ impl Engine {
         );
 
         let account = self.get_or_create_account(tx.client_id);
-        if let Some(new_available) = account.available + amount {
-            account.available = new_available;
-        }
+        account.available = new_available;
 
         Ok(())
     }
@@ -176,8 +190,7 @@ impl Engine {
         let (is_locked, current_available) = self
             .accounts
             .get(&tx.client_id)
-            .map(|a| (a.locked, a.available))
-            .unwrap_or((false, Amount::default()));
+            .map_or((false, Amount::default()), |a| (a.locked, a.available));
 
         if is_locked {
             return Err(EngineError::AccountLocked(tx.client_id));
@@ -191,12 +204,15 @@ impl Engine {
             });
         }
 
+        // Check overflow before mutating state
+        let new_available = (current_available - amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+
         self.tx_ids.insert(tx.tx_id);
 
         let account = self.get_or_create_account(tx.client_id);
-        if let Some(new_available) = account.available - amount {
-            account.available = new_available;
-        }
+        account.available = new_available;
 
         // NOTE: Withdrawals are not recorded for dispute lookup. Per spec, only
         // deposits are disputable since they represent funds entering the system.
@@ -233,19 +249,30 @@ impl Engine {
 
         let amount = deposit.amount;
 
-        let account = self.get_or_create_account(tx.client_id);
-        if account.locked {
+        // Pre-check locked and compute new balances before mutating
+        let (is_locked, current_available, current_held) = self
+            .accounts
+            .get(&tx.client_id)
+            .map_or((false, Amount::default(), Amount::default()), |a| {
+                (a.locked, a.available, a.held)
+            });
+
+        if is_locked {
             return Err(EngineError::AccountLocked(tx.client_id));
         }
 
         // NOTE: Available MAY go negative here. Per spec, this represents a
         // fraud scenario where funds were withdrawn before the dispute.
-        if let Some(new_available) = account.available - amount {
-            account.available = new_available;
-        }
-        if let Some(new_held) = account.held + amount {
-            account.held = new_held;
-        }
+        let new_available = (current_available - amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+        let new_held = (current_held + amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+
+        let account = self.get_or_create_account(tx.client_id);
+        account.available = new_available;
+        account.held = new_held;
 
         if let Some(deposit) = self.deposits.get_mut(&tx.tx_id) {
             deposit.dispute_state = DisputeState::Disputed;
@@ -278,13 +305,24 @@ impl Engine {
 
         let amount = deposit.amount;
 
+        // Pre-compute new balances before mutating
+        let (current_available, current_held) = self
+            .accounts
+            .get(&tx.client_id)
+            .map_or((Amount::default(), Amount::default()), |a| {
+                (a.available, a.held)
+            });
+
+        let new_available = (current_available + amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+        let new_held = (current_held - amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+
         let account = self.get_or_create_account(tx.client_id);
-        if let Some(new_available) = account.available + amount {
-            account.available = new_available;
-        }
-        if let Some(new_held) = account.held - amount {
-            account.held = new_held;
-        }
+        account.available = new_available;
+        account.held = new_held;
 
         if let Some(deposit) = self.deposits.get_mut(&tx.tx_id) {
             deposit.dispute_state = DisputeState::Resolved;
@@ -317,12 +355,21 @@ impl Engine {
 
         let amount = deposit.amount;
 
+        // Pre-compute new held before mutating
+        let current_held = self
+            .accounts
+            .get(&tx.client_id)
+            .map(|a| a.held)
+            .unwrap_or_default();
+
         // NOTE: Funds are removed from held (they leave the system entirely).
         // The account is then locked to prevent further transactions.
+        let new_held = (current_held - amount).ok_or(EngineError::Overflow {
+            client_id: tx.client_id,
+        })?;
+
         let account = self.get_or_create_account(tx.client_id);
-        if let Some(new_held) = account.held - amount {
-            account.held = new_held;
-        }
+        account.held = new_held;
         account.locked = true;
 
         if let Some(deposit) = self.deposits.get_mut(&tx.tx_id) {

@@ -16,17 +16,16 @@ fn run() -> Result<ExitCode> {
 
     let args: Vec<String> = env::args().collect();
 
-    let file_path = match args.get(1) {
-        Some(path) => path,
-        None => {
-            error!("missing file argument");
-            payments::csv_io::write_accounts(io::stdout(), std::iter::empty())?;
-            return Ok(ExitCode::SUCCESS);
-        }
+    let file_path = if let Some(path) = args.get(1) {
+        path
+    } else {
+        error!("missing file argument");
+        payments::csv_io::write_accounts(io::stdout(), std::iter::empty())?;
+        return Ok(ExitCode::SUCCESS);
     };
 
     let file =
-        File::open(file_path).with_context(|| format!("failed to open file: {}", file_path))?;
+        File::open(file_path).with_context(|| format!("failed to open file: {file_path}"))?;
 
     let accounts = payments::process_transactions(file);
     payments::csv_io::write_accounts(io::stdout(), accounts.iter())?;
