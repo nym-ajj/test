@@ -2,6 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use tracing::{debug, trace};
+
 use crate::types::{
     Account, Amount, ClientId, DepositRecord, DisputeState, Transaction, TransactionType, TxId,
 };
@@ -177,6 +179,15 @@ impl Engine {
         let account = self.get_or_create_account(tx.client_id);
         account.available = new_available;
 
+        debug!(
+            "processed deposit for client {}, tx {}",
+            tx.client_id.0, tx.tx_id.0
+        );
+        trace!(
+            "client {}: available {} -> {}",
+            tx.client_id.0, current_available, new_available
+        );
+
         Ok(())
     }
 
@@ -213,6 +224,15 @@ impl Engine {
 
         let account = self.get_or_create_account(tx.client_id);
         account.available = new_available;
+
+        debug!(
+            "processed withdrawal for client {}, tx {}",
+            tx.client_id.0, tx.tx_id.0
+        );
+        trace!(
+            "client {}: available {} -> {}",
+            tx.client_id.0, current_available, new_available
+        );
 
         // NOTE: Withdrawals are not recorded for dispute lookup. Per spec, only
         // deposits are disputable since they represent funds entering the system.
@@ -278,6 +298,15 @@ impl Engine {
             deposit.dispute_state = DisputeState::Disputed;
         }
 
+        debug!(
+            "processed dispute for client {}, tx {}",
+            tx.client_id.0, tx.tx_id.0
+        );
+        trace!(
+            "client {}: available {} -> {}, held {} -> {}",
+            tx.client_id.0, current_available, new_available, current_held, new_held
+        );
+
         Ok(())
     }
 
@@ -328,6 +357,15 @@ impl Engine {
             deposit.dispute_state = DisputeState::Resolved;
         }
 
+        debug!(
+            "processed resolve for client {}, tx {}",
+            tx.client_id.0, tx.tx_id.0
+        );
+        trace!(
+            "client {}: available {} -> {}, held {} -> {}",
+            tx.client_id.0, current_available, new_available, current_held, new_held
+        );
+
         Ok(())
     }
 
@@ -375,6 +413,15 @@ impl Engine {
         if let Some(deposit) = self.deposits.get_mut(&tx.tx_id) {
             deposit.dispute_state = DisputeState::ChargedBack;
         }
+
+        debug!(
+            "processed chargeback for client {}, tx {}",
+            tx.client_id.0, tx.tx_id.0
+        );
+        trace!(
+            "client {}: held {} -> {}, locked",
+            tx.client_id.0, current_held, new_held
+        );
 
         Ok(())
     }
