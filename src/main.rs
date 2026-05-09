@@ -3,7 +3,7 @@
 use std::{env, fs::File, io, process::ExitCode};
 
 use anyhow::{Context, Result};
-use tracing::error;
+use tracing::{error, warn};
 
 fn run() -> Result<ExitCode> {
     tracing_subscriber::fmt()
@@ -23,6 +23,10 @@ fn run() -> Result<ExitCode> {
         payments::csv_io::write_accounts(io::stdout(), std::iter::empty())?;
         return Ok(ExitCode::SUCCESS);
     };
+
+    if args.len() > 2 {
+        warn!("ignoring extra arguments: {:?}", &args[2..]);
+    }
 
     let file =
         File::open(file_path).with_context(|| format!("failed to open file: {file_path}"))?;
