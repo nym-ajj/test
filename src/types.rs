@@ -125,9 +125,8 @@ impl Account {
     /// Returns the total balance (available + held).
     #[must_use]
     pub fn total(&self) -> Amount {
-        // NOTE: Cannot overflow for valid account states since both components
-        // are non-negative and bounded by deposit limits.
-        (self.available + self.held).unwrap_or_default()
+        (self.available + self.held)
+            .expect("account invariant violated: available + held overflowed")
     }
 }
 
