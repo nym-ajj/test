@@ -1,6 +1,7 @@
 /target
 /spec
 /ai-transcripts
+.session.md
 
 # Nix / direnv
 /.direnv
