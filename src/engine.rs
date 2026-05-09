@@ -97,8 +97,7 @@ impl std::error::Error for EngineError {}
 
 /// The transaction processing engine.
 ///
-/// Maintains account state and processes transactions according to the
-/// payments engine specification.
+/// Maintains account state and processes deposits, withdrawals, and disputes.
 pub struct Engine {
     /// Client accounts indexed by client ID.
     accounts: HashMap<ClientId, Account>,
@@ -234,8 +233,8 @@ impl Engine {
             tx.client_id.0, current_available, new_available
         );
 
-        // NOTE: Withdrawals are not recorded for dispute lookup. Per spec, only
-        // deposits are disputable since they represent funds entering the system.
+        // NOTE: Withdrawals are not recorded for dispute lookup. Only deposits
+        // are disputable since they represent funds entering the system.
 
         Ok(())
     }
@@ -281,8 +280,8 @@ impl Engine {
             return Err(EngineError::AccountLocked(tx.client_id));
         }
 
-        // NOTE: Available MAY go negative here. Per spec, this represents a
-        // fraud scenario where funds were withdrawn before the dispute.
+        // NOTE: Available MAY go negative here. This represents a fraud scenario
+        // where funds were withdrawn before the dispute was filed.
         let new_available = (current_available - amount).ok_or(EngineError::Overflow {
             client_id: tx.client_id,
         })?;

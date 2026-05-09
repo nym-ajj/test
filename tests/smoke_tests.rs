@@ -28,24 +28,23 @@ fn smoke_basic() {
     );
 }
 
-/// Tests the exact example from the spec (rust-coding-challenge.md).
-/// Input has spaces after commas to verify whitespace handling.
-/// Client 2's withdrawal of 3.0 fails (insufficient funds: only has 2.0).
+/// Verifies whitespace tolerance (spaces after commas) and insufficient funds.
+/// Client 2's withdrawal of 4.0 fails because they only have 2.5.
 #[test]
-fn smoke_spec_example() {
+fn smoke_whitespace_and_insufficient_funds() {
     check(
         indoc! {"
             type, client, tx, amount
-            deposit, 1, 1, 1.0
-            deposit, 2, 2, 2.0
-            deposit, 1, 3, 2.0
-            withdrawal, 1, 4, 1.5
-            withdrawal, 2, 5, 3.0
+            deposit, 1, 1, 1.25
+            deposit, 2, 2, 2.5
+            deposit, 1, 3, 2.25
+            withdrawal, 1, 4, 1.75
+            withdrawal, 2, 5, 4.0
         "},
         expect![[r#"
             client,available,held,total,locked
-            1,1.5000,0.0000,1.5000,false
-            2,2.0000,0.0000,2.0000,false
+            1,1.7500,0.0000,1.7500,false
+            2,2.5000,0.0000,2.5000,false
         "#]],
     );
 }
