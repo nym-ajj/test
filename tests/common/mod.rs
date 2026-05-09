@@ -1,6 +1,7 @@
 //! Shared test utilities.
 
 /// Process input CSV using the library and return output CSV as string.
+#[allow(dead_code)]
 pub fn process_via_library(input: &str) -> String {
     let accounts = payments::process_transactions(input.as_bytes());
     let mut output = Vec::new();
