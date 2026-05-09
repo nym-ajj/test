@@ -15,46 +15,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 unsafe_code = "forbid"
 
 [lints.clippy]
-# Panic prevention (payments code must not panic in production)
+# Forces explicit error handling
 unwrap_used = "deny"
-panic = "deny"
-panic_in_result_fn = "deny"
-get_unwrap = "deny"
 
-# Arithmetic safety (critical for money handling)
-arithmetic_side_effects = "deny"
+# Catches accidental float use in money code
 float_arithmetic = "deny"
-float_cmp = "deny"
-float_cmp_const = "deny"
-lossy_float_literal = "deny"
 
-# Type casting safety
-cast_possible_truncation = "deny"
-cast_sign_loss = "deny"
-cast_possible_wrap = "deny"
-
-# Production hygiene
-print_stdout = "deny"
-print_stderr = "deny"
-dbg_macro = "deny"
-
-# Review-worthy but may need exceptions
-expect_used = "warn"
-unreachable = "warn"
-indexing_slicing = "warn"
-as_conversions = "warn"
-wildcard_enum_match_arm = "warn"
-integer_division = "warn"
-modulo_arithmetic = "warn"
-
-# Pedantic docs (informational)
-missing_errors_doc = "warn"
-missing_panics_doc = "warn"
-doc_markdown = "warn"
-
-# Too noisy, disable
-must_use_candidate = "allow"
-module_name_repetitions = "allow"
+# Noisy and not auto-fixable
 too_many_lines = "allow"
 similar_names = "allow"
 

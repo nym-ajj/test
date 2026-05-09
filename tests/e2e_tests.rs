@@ -12,7 +12,12 @@ fn run_binary(input: &str) -> String {
     write!(temp, "{}", input).expect("failed to write temp file");
 
     let output = Command::new("cargo")
-        .args(["run", "--quiet", "--", temp.path().to_str().unwrap()])
+        .args([
+            "run",
+            "--quiet",
+            "--",
+            temp.path().to_str().expect("path is valid utf8"),
+        ])
         .output()
         .expect("failed to run binary");
 

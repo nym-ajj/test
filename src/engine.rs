@@ -258,10 +258,10 @@ impl Engine {
         // Cannot dispute if already Disputed or ChargedBack.
         match deposit.dispute_state {
             DisputeState::None | DisputeState::Resolved => {}
-            state => {
+            DisputeState::Disputed | DisputeState::ChargedBack => {
                 return Err(EngineError::NotDisputable {
                     tx_id: tx.tx_id,
-                    state,
+                    state: deposit.dispute_state,
                 });
             }
         }
@@ -507,7 +507,7 @@ mod tests {
         let mut engine = Engine::new();
         engine.process(make_deposit(1, 1, "100.0")).unwrap();
 
-        let account = engine.accounts.get(&ClientId(1)).unwrap();
+        let account = engine.accounts.get(&ClientId(1)).expect("account exists");
         assert_eq!(account.available.as_decimal(), dec!(100.0));
         assert_eq!(account.held.as_decimal(), dec!(0));
     }
@@ -518,7 +518,7 @@ mod tests {
         engine.process(make_deposit(1, 1, "100.0")).unwrap();
         engine.process(make_withdrawal(1, 2, "25.0")).unwrap();
 
-        let account = engine.accounts.get(&ClientId(1)).unwrap();
+        let account = engine.accounts.get(&ClientId(1)).expect("account exists");
         assert_eq!(account.available.as_decimal(), dec!(75.0));
     }
 
@@ -531,7 +531,7 @@ mod tests {
         assert!(matches!(result, Err(EngineError::InsufficientFunds { .. })));
 
         // Balance unchanged
-        let account = engine.accounts.get(&ClientId(1)).unwrap();
+        let account = engine.accounts.get(&ClientId(1)).expect("account exists");
         assert_eq!(account.available.as_decimal(), dec!(50.0));
     }
 
@@ -550,7 +550,7 @@ mod tests {
         engine.process(make_deposit(1, 1, "100.0")).unwrap();
         engine.process(make_dispute(1, 1)).unwrap();
 
-        let account = engine.accounts.get(&ClientId(1)).unwrap();
+        let account = engine.accounts.get(&ClientId(1)).expect("account exists");
         assert_eq!(account.available.as_decimal(), dec!(0));
         assert_eq!(account.held.as_decimal(), dec!(100.0));
         assert_eq!(account.total().as_decimal(), dec!(100.0));
@@ -563,7 +563,7 @@ mod tests {
         engine.process(make_dispute(1, 1)).unwrap();
         engine.process(make_resolve(1, 1)).unwrap();
 
-        let account = engine.accounts.get(&ClientId(1)).unwrap();
+        let account = engine.accounts.get(&ClientId(1)).expect("account exists");
         assert_eq!(account.available.as_decimal(), dec!(100.0));
         assert_eq!(account.held.as_decimal(), dec!(0));
     }
@@ -575,7 +575,7 @@ mod tests {
         engine.process(make_dispute(1, 1)).unwrap();
         engine.process(make_chargeback(1, 1)).unwrap();
 
-        let account = engine.accounts.get(&ClientId(1)).unwrap();
+        let account = engine.accounts.get(&ClientId(1)).expect("account exists");
         assert_eq!(account.available.as_decimal(), dec!(0));
         assert_eq!(account.held.as_decimal(), dec!(0));
         assert_eq!(account.total().as_decimal(), dec!(0));
